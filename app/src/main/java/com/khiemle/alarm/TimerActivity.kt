@@ -10,20 +10,53 @@ import com.wdullaer.materialdatetimepicker.time.TimePickerDialog
 import java.util.*
 
 class TimerActivity : AppCompatActivity(), TimePickerDialog.OnTimeSetListener {
+
     private lateinit var binding: ActivityTimerBinding
+    private var countDownTimer: CountDownTimer? = null
     private val viewModel: TimerViewModel by viewModels {
         TimerViewModel.Factory(
             prefHelper =  PrefHelperImpl(context = applicationContext),
             timerBackground = TimerBackgroundImpl(context = applicationContext)
         )
     }
-    private var countDownTimer: CountDownTimer? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityTimerBinding.inflate(layoutInflater)
         applyInteractions()
         observeViewModel()
         setContentView(binding.root)
+    }
+
+    private fun applyInteractions() {
+        with(binding) {
+            tvCountingDownTimer.setOnClickListener {
+                showTimePickerDialog();
+            }
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.timerState.observe(this) { state ->
+            updateButtons(state)
+            displayCountdownText(state.remainingTime)
+            updateProgressBar(
+                millisUntilFinished = state.remainingTime,
+                timeLength = state.timeLength
+            )
+            if (state is CountdownRunning) {
+                startCountdownTimer(state.remainingTime, state.timeLength)
+            }
+        }
+    }
+
+    private fun showTimePickerDialog() {
+        val timePickerDialog: TimePickerDialog = TimePickerDialog.newInstance(
+            this@TimerActivity,
+            0, 0, 0, true
+        )
+        timePickerDialog.enableSeconds(true)
+        timePickerDialog.show(supportFragmentManager, "TimePickerDialog")
     }
 
     private fun updateButtons(state: CountdownTimerState) {
@@ -82,43 +115,14 @@ class TimerActivity : AppCompatActivity(), TimePickerDialog.OnTimeSetListener {
         }
     }
 
-    private fun observeViewModel() {
-        viewModel.timerState.observe(this) { state ->
-            updateButtons(state)
-            displayCountdownText(state.remainingTime)
-            updateProgressBar(
-                millisUntilFinished = state.remainingTime,
-                timeLength = state.timeLength
-            )
-            when (state) {
-                is CountdownIdle -> {
-                }
-                is CountdownPaused -> {
-                }
-                is CountdownRunning -> {
-                    startCountdownTimer(state.remainingTime, state.timeLength)
-                }
-                CountdownStopped -> {
-                }
-            }
-        }
-    }
-
-    private fun applyInteractions() {
-        with(binding) {
-            tvCountingDownTimer.setOnClickListener {
-                showTimePickerDialog();
-            }
-        }
-    }
-
-    private fun showTimePickerDialog() {
-        val timePickerDialog: TimePickerDialog = TimePickerDialog.newInstance(
-            this@TimerActivity,
-            0, 0, 0, true
+    private fun displayCountdownText(millisUntilFinished: Long) {
+        val (hours, minutes, seconds) = getDisplayValue(millisUntilFinished)
+        binding.tvCountingDownTimer.text = getString(
+            R.string.display_counting_timer,
+            hours.twoDigitsWithZero(),
+            minutes.twoDigitsWithZero(),
+            seconds.twoDigitsWithZero()
         )
-        timePickerDialog.enableSeconds(true)
-        timePickerDialog.show(supportFragmentManager, "TimePickerDialog")
     }
 
     private fun startCountdownTimer(remaining: Long, timeLength: Long) {
@@ -146,20 +150,9 @@ class TimerActivity : AppCompatActivity(), TimePickerDialog.OnTimeSetListener {
         viewModel.onTick(millisUntilFinished)
     }
 
-    private fun displayCountdownText(millisUntilFinished: Long) {
-        val (hours, minutes, seconds) = getDisplayValue(millisUntilFinished)
-        binding.tvCountingDownTimer.text = getString(
-            R.string.display_counting_timer,
-            hours.twoDigitsWithZero(),
-            minutes.twoDigitsWithZero(),
-            seconds.twoDigitsWithZero()
-        )
-    }
-
     override fun onTimeSet(view: TimePickerDialog?, hourOfDay: Int, minute: Int, second: Int) {
         viewModel.onTimeSet(hourOfDay, minute, second)
     }
-
 
     private fun showTimeUpDialog() {
         val builder: AlertDialog.Builder = AlertDialog.Builder(this)
