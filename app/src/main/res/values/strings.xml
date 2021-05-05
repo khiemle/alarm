@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Alarm</string>
+    <string name="display_counting_timer">%s : %s : %s</string>
+    <string name="start">Start</string>
+    <string name="resume">Resume</string>
+    <string name="pause">Pause</string>
+</resources>
